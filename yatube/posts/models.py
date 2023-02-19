@@ -81,3 +81,35 @@ class Comment(models.Model):
 
     def __str__(self):
         return self.text[:settings.STRING_LENGTH]
+
+
+class Follow(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='follower',
+        verbose_name='Подписчик',
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='following',
+        verbose_name='Автор',
+    )
+
+    class Meta:
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'
+        constraints = (
+            models.UniqueConstraint(
+                name='unique_follows',
+                fields=('user', 'author'),
+            ),
+            models.CheckConstraint(
+                name='prevent_self_follow',
+                check=~models.Q(user=models.F('author')),
+            ),
+        )
+
+    def __str__(self):
+        return f'{self.user} подписан на {self.author}'

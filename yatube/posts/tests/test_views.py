@@ -10,7 +10,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from ..models import Group, Post, Comment
+from ..models import Group, Post, Comment, Follow
 
 User = get_user_model()
 
@@ -335,7 +335,7 @@ class PostViewTests(TestCase):
         self.assertEqual(changed_post.text, changed_text)
 
     def test_cache_index_page(self):
-        """Работа кеша на главной странице"""
+        """Работа кеша на главной странице."""
         response_0 = self.authorized_client.get('/')
         Post.objects.latest('pub_date').delete()
         response_1 = self.authorized_client.get('/')
@@ -355,7 +355,7 @@ class PostViewTests(TestCase):
     def test_add_comment_authorized_client(self):
         """
         Комментировать посты может только авторизованный пользователь
-        и комментарий создаётся
+        и комментарий создаётся.
         """
         comment_id = 1
         form_data = {'text': 'Мой комментарий'}
@@ -379,7 +379,7 @@ class PostViewTests(TestCase):
     def test_add_comment_guest_client(self):
         """
         Неавторизованный пользователь не может комментировать посты
-        и комментарий не создаётся
+        и комментарий не создаётся.
         """
         comment_id = 1
         form_data = {'text': 'Тестовый комментарий'}
@@ -392,3 +392,66 @@ class PostViewTests(TestCase):
             'Comment matching query does not exist'
         ):
             Comment.objects.get(id=comment_id)
+
+    def test_follow_index(self):
+        """Вывод постов авторов, на которых подписался пользователь."""
+        self.authorized_client_without_post.get(
+            reverse(
+                'posts:profile_follow',
+                kwargs={'username': self.user.username}
+            )
+        )
+        response = self.authorized_client_without_post.get(
+            reverse('posts:follow_index')
+        )
+        last_object = response.context['page_obj'][0]
+        expected_post = self.post
+        last_object_expected_post_fields = {
+            last_object.text: expected_post.text,
+            last_object.pub_date: expected_post.pub_date,
+            last_object.group: expected_post.group,
+            last_object.image: expected_post.image,
+        }
+        for last_object_field, expected_post_field in (
+            last_object_expected_post_fields.items()
+        ):
+            with self.subTest(last_object=last_object):
+                self.assertEqual(
+                    last_object_field,
+                    expected_post_field,
+                    'Ошибка передачи контекста в follow'
+                )
+
+    def test_profile_follow(self):
+        """Проверка подписки на автора."""
+        self.authorized_client_without_post.get(
+            reverse(
+                'posts:profile_follow',
+                kwargs={'username': PostViewTests.user.username}
+            )
+        )
+        self.assertTrue(
+            Follow.objects.filter(
+                user=self.new_user, author=self.user
+            ).exists(),
+            'Подписка не осуществляется'
+        )
+
+    def test_profile_unfollow(self):
+        """Проверка отписки от автора."""
+        Follow.objects.create(
+            user=self.new_user,
+            author=self.user
+        )
+        self.authorized_client_without_post.get(
+            reverse(
+                'posts:profile_unfollow',
+                kwargs={'username': self.user.username}
+            )
+        )
+        self.assertFalse(
+            Follow.objects.filter(
+                user=self.new_user, author=self.user
+            ).exists(),
+            'Отписка от автора не осуществляется'
+        )

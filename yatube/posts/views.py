@@ -1,9 +1,10 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.cache import cache_page
+from django.urls import reverse
 
 from .forms import PostForm, CommentForm
-from .models import Post, Group, User
+from .models import Post, Group, User, Follow
 from .paginators import paginator
 
 
@@ -32,9 +33,14 @@ def group_posts(request, slug):
 def profile(request, username):
     author = get_object_or_404(User, username=username)
     posts = author.posts.select_related('group', 'author')
+    following = (
+        request.user.is_authenticated
+        and Follow.objects.filter(user=request.user, author=author).exists()
+    )
     context = {
         'author': author,
         'page_obj': paginator(posts, request),
+        'following': following,
     }
     return render(request, 'posts/profile.html', context)
 
@@ -98,3 +104,38 @@ def add_comment(request, post_id):
         comment.post = post
         comment.save()
     return redirect('posts:post_detail', post_id=post_id)
+
+
+@login_required
+def follow_index(request):
+    posts = Post.objects.filter(author__following__user=request.user)
+    context = {
+        'page_obj': paginator(posts, request)
+    }
+    return render(request, 'posts/follow.html', context)
+
+
+@login_required
+def profile_follow(request, username):
+    author = get_object_or_404(User, username=username)
+    if (
+        request.user != author
+        and (
+            not Follow.objects.filter(
+                user=request.user,
+                author=author
+            ).exists()
+        )
+    ):
+        Follow.objects.create(
+            user=request.user,
+            author=author
+        )
+    return redirect(reverse('posts:profile', kwargs={'username': username}))
+
+
+@login_required
+def profile_unfollow(request, username):
+    author = get_object_or_404(User, username=username)
+    Follow.objects.filter(user=request.user, author=author).delete()
+    return redirect(reverse('posts:profile', kwargs={'username': username}))
