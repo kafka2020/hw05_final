@@ -1,6 +1,7 @@
 from http import HTTPStatus
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import Client, TestCase
 
 
@@ -48,10 +49,11 @@ class PostURLTests(TestCase):
         self.guest_client = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+        cache.clear()
 
     def test_url_is_for_guests(self):
         """Доступность страниц любому пользователю."""
-        urls = PostURLTests.urls
+        urls = self.urls
         for url in urls:
             with self.subTest(url=url):
                 response = self.guest_client.get(url)
@@ -72,7 +74,7 @@ class PostURLTests(TestCase):
 
     def test_url_is_for_author(self):
         """Доступность cтраницы 'posts/<int:post_id>/edit/' автору поста."""
-        post_id = PostURLTests.post.id
+        post_id = self.post.id
         response = self.authorized_client.get(f'/posts/{post_id}/edit/')
         self.assertEqual(
             response.status_code,
@@ -91,7 +93,7 @@ class PostURLTests(TestCase):
 
     def test_urls_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
-        url_templates_names = PostURLTests.url_templates_names
+        url_templates_names = self.url_templates_names
         for address, template in url_templates_names.items():
             with self.subTest(address=address):
                 response = self.authorized_client.get(address)
