@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Технологии{% endblock %}
+{% block content %}
+{% comment %} Колонки с отступом сверху и снизу {% endcomment %}
+<div class="row">
+  <h1>Навыки</h1>
+  <aside class="col-12 col-md-3">
+    <ul class="list-group list-group-flush">
+      <li class="list-group-item">
+        Python
+      </li>
+      <li class="list-group-item">
+        Django
+      </li>
+      <li class="list-group-item">
+        HTML
+      </li>
+      <li class="list-group-item">
+        CSS
+      </li>
+      <li class="list-group-item">
+        JavaScript
+      </li>
+      <li class="list-group-item">
+        Git, VSCode, Chrome DevTools, Command line
+      </li>
+    </ul>
+  </aside>
+  <article class="col-12 col-md-9">
+    <img src="{% static 'img/django-logo.png' %}" width="250" class="d-inline-block align-top img-thumbnail" alt="...">
+    <p>Для создания данного проекта был использован фреймворк <mark>Django</mark>. Не обошлось без знаний языка <mark>Python</mark>. Конечно же использовалась программа <mark>Git</mark>.</p>
+  </article>
+</div>
+{% endblock %}
