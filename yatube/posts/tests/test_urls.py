@@ -5,7 +5,7 @@ from django.core.cache import cache
 from django.test import Client, TestCase
 
 
-from ..models import Group, Post
+from ..models import Group, Post, Comment
 
 User = get_user_model()
 
@@ -29,6 +29,11 @@ class PostURLTests(TestCase):
             text='Тестовый пост в котором больше, чем 15 символов',
             group=cls.group
         )
+        cls.comment = Comment.objects.create(
+            post=cls.post,
+            author=cls.user,
+            text='Тестовый комментарий'
+        )
         # список url доступных всем
         cls.urls = [
             '/',
@@ -43,6 +48,8 @@ class PostURLTests(TestCase):
             f'/posts/{cls.post.id}/': 'posts/post_detail.html',
             '/create/': 'posts/create_post.html',
             f'/posts/{cls.post.id}/edit/': 'posts/create_post.html',
+            f'/posts/{cls.comment.id}/': 'posts/post_detail.html',
+            '/follow/': 'posts/follow.html',
         }
 
     def setUp(self):
@@ -82,6 +89,15 @@ class PostURLTests(TestCase):
             'Страница posts/<int:post_id>/edit/ не доступна автору поста.'
         )
 
+    def test_follow_url_exists_for_user(self):
+        """Доступность страницы 'follow/' зарегистрированным пользователям."""
+        response = self.authorized_client.get('/follow/')
+        self.assertEqual(
+            response.status_code,
+            HTTPStatus.OK,
+            'Страница follow/ не доступна зарегистрированным пользователям.'
+        )
+
     def test_non_existent_url(self):
         """Запрос к несуществующей странице."""
         response = self.guest_client.get('/unexisting_page/')
@@ -107,7 +123,8 @@ class PostURLTests(TestCase):
         """Редирект неавторизованного пользователя"""
         urls = {
             '/create/': '/auth/login/?next=/create/',
-            '/posts/1/edit/': '/auth/login/?next=/posts/1/edit/'
+            '/posts/1/edit/': '/auth/login/?next=/posts/1/edit/',
+            '/follow/': '/auth/login/?next=/follow/'
         }
         for route, redirect_page in urls.items():
             with self.subTest(redirect_page=redirect_page):

@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from ..models import Group, Post
+from ..models import Group, Post, Comment
 
 User = get_user_model()
 
@@ -108,3 +108,29 @@ class PostFormTests(TestCase):
             with self.subTest(new_post=new_post):
                 self.assertEqual(new_post, expected)
         self.assertEqual(self.group.posts.count(), 0)
+
+    def test_add_comment(self):
+        """Валидная форма создает комментарий к посту."""
+        post = Post.objects.create(
+            author=self.user,
+            text='Тестовая запись',
+        )
+        form_data = {
+            'text': 'Тестовый комментарий',
+            'post': post.pk
+        }
+        response = self.authorized_client.post(
+            reverse(
+                'posts:add_comment', kwargs={'post_id': post.pk}
+            ),
+            data=form_data,
+            follow=True
+        )
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(Comment.objects.count(), 1)
+        self.assertTrue(
+            Comment.objects.filter(
+                text='Тестовый комментарий',
+                post=post,
+            ).exists()
+        )
